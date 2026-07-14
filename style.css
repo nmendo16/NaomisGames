@@ -90,6 +90,34 @@ body {
   cursor: pointer;
 }
 
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    position: relative;
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+.brand {
+  font-family: "Canva Sans", "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.14rem;
+  text-decoration: none;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
 
 .content {
   max-width: 1120px;
