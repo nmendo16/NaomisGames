@@ -1,11 +1,6 @@
 :root {
-  --bg: #f7efe7;
-  --panel: #ffffff;
   --text: #2f241d;
   --muted: #6f5b49;
-  --accent: #a96d3a;
-  --accent-dark: #7e4f24;
-  --shadow: 0 14px 40px rgba(0, 0, 0, 0.12);
 }
 
 @font-face {
@@ -28,7 +23,7 @@ body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text);
   overflow: hidden;
-  background: #000;
+  background: rgba(186, 187, 191, 0.5);
 }
 
 body {
@@ -36,11 +31,12 @@ body {
 }
 
 .page-shell {
+  margin: 0 10%;
   height: 100vh;
-  width: 100vw;
+  width: 80vw;
   overflow: hidden;
   background-image: url("images/bg.png");
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   transform-style: preserve-3d;
@@ -94,104 +90,6 @@ body {
   cursor: pointer;
 }
 
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: transparent;
-  backdrop-filter: none;
-  box-shadow: none;
-}
-
-@media (max-width: 768px) {
-  .topbar {
-    position: relative;
-    background: rgba(0, 0, 0, 0.5);
-  }
-}
-
-.brand {
-  font-family: "Canva Sans", "Segoe UI", sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.14rem;
-  text-decoration: none;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-}
-
-.nav-links {
-  display: flex;
-  gap: 1.2rem;
-}
-
-.nav-links a {
-  font-family: "Canva Sans", "Segoe UI", sans-serif;
-  text-decoration: none;
-  color: #000000;
-  font-weight: 200;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0);
-}
-
-.nav-links a:hover {
-  color: #f8d2a5;
-}
-
-.hero {
-  height: calc(100vh - 70px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background: transparent;
-}
-
-.hero-content {
-  width: min(760px, 100%);
-  padding: 2.4rem 2.8rem;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(8px);
-  color: white;
-  box-shadow: var(--shadow);
-}
-
-.eyebrow {
-  margin: 0 0 0.4rem;
-  text-transform: uppercase;
-  letter-spacing: 0.24rem;
-  font-size: 0.8rem;
-  opacity: 0.9;
-}
-
-.hero-content h1 {
-  margin: 0 0 0.8rem;
-  font-size: clamp(2rem, 4vw, 3.2rem);
-}
-
-.lead {
-  margin: 0 0 1.1rem;
-  font-size: 1.05rem;
-  line-height: 1.7;
-  color: rgba(255, 255, 255, 0.95);
-}
-
-.button {
-  display: inline-block;
-  padding: 0.8rem 1.15rem;
-  border-radius: 999px;
-  text-decoration: none;
-  background: var(--accent);
-  color: white;
-  font-weight: 700;
-}
-
-.button:hover {
-  background: var(--accent-dark);
-}
 
 .content {
   max-width: 1120px;
@@ -206,56 +104,17 @@ body {
   }
 }
 
-.panel {
-  background: var(--panel);
-  border-radius: 20px;
-  padding: 1.5rem 1.6rem;
-  box-shadow: var(--shadow);
-  margin-bottom: 1.2rem;
-}
-
-.panel h2 {
-  margin-top: 0;
-  color: var(--accent-dark);
-}
-
-.panel p,
-.card p,
-blockquote {
-  line-height: 1.7;
+.footer {
+  text-align: center;
+  padding: 1rem 1rem 2rem;
   color: var(--muted);
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 1.2rem 0 1.5rem;
-}
-
-.card {
-  background: var(--panel);
-  border-radius: 18px;
-  padding: 1.2rem;
-  box-shadow: var(--shadow);
-}
-
-.card h3 {
-  margin-top: 0;
-  color: var(--accent-dark);
-}
-
-.testimonials {
-  display: grid;
-  gap: 0.9rem;
-}
-
-blockquote {
-  margin: 0;
-  padding: 1rem 1.1rem;
-  border-left: 4px solid var(--accent);
-  background: #fcf6ee;
-  border-radius: 10px;
+@media (max-width: 768px) {
+  .footer {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--text);
+  }
 }
 
 .footer {
