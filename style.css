@@ -1,6 +1,16 @@
 :root {
   --text: #2f241d;
   --muted: #6f5b49;
+
+  /* console screen (in-app UI) theme */
+  --screen-bg-1: #dff0fb;
+  --screen-bg-2: #a9d4f0;
+  --screen-text: #1c3a4a;
+  --screen-muted: #4a6b7a;
+  --screen-accent: #2f7a4f;
+  --screen-focus-bg: rgba(255, 255, 255, 0.85);
+  --screen-focus-border: #2f7a4f;
+  --screen-disabled: #93a9b3;
 }
 
 @font-face {
@@ -104,8 +114,199 @@ html.tilt-right .page-shell {
 }
 
 .game-canvas {
+  position: relative;
   width: 100%;
   height: 100%;
+  background: radial-gradient(120% 130% at 30% 15%, var(--screen-bg-1), var(--screen-bg-2));
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.exit-btn {
+  position: absolute;
+  top: 3%;
+  right: 3%;
+  z-index: 5;
+  width: 8%;
+  aspect-ratio: 1;
+  min-width: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--screen-text);
+  font-size: clamp(0.9rem, 2.4vw, 1.4rem);
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.exit-btn:hover,
+.exit-btn:focus-visible {
+  background: #fff;
+}
+
+.screen-content {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 6% 8%;
+  color: var(--screen-text);
+}
+
+.screen-content h2 {
+  margin: 0 0 0.2em;
+  font-size: clamp(0.95rem, 2.4vw, 1.5rem);
+}
+
+.screen-eyebrow {
+  margin: 0 0 0.6em;
+  font-size: clamp(0.65rem, 1.6vw, 0.9rem);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--screen-muted);
+}
+
+/* ----- shared focusable row (menu items, detail actions, doc links) ----- */
+
+.screen-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, 0.6vw, 6px);
+}
+
+.screen-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: clamp(4px, 1.2vw, 10px) clamp(6px, 1.6vw, 14px);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: clamp(0.72rem, 1.9vw, 1.05rem);
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+
+.screen-row .cursor {
+  width: 1.1em;
+  flex: none;
+  opacity: 0;
+}
+
+.screen-row.focused {
+  background: var(--screen-focus-bg);
+  border-color: var(--screen-focus-border);
+  font-weight: 700;
+}
+
+.screen-row.focused .cursor {
+  opacity: 1;
+}
+
+.screen-row.disabled {
+  color: var(--screen-disabled);
+  cursor: default;
+  pointer-events: none;
+}
+
+.screen-row.link::after {
+  content: "↗";
+  margin-left: auto;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+
+/* ----- Game Menu screen ----- */
+
+.menu-list {
+  max-height: 78%;
+}
+
+/* ----- Game Detail screen ----- */
+
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 4%;
+}
+
+.detail-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #cfe3ea, #9fb9c4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--screen-muted);
+  font-size: clamp(0.6rem, 1.6vw, 0.85rem);
+  text-align: center;
+  padding: 0.5em;
+}
+
+.detail-desc {
+  margin: 0 0 0.8em;
+  font-size: clamp(0.68rem, 1.7vw, 0.95rem);
+  color: var(--screen-muted);
+}
+
+.detail-static {
+  margin-top: 0.8em;
+  font-size: clamp(0.66rem, 1.6vw, 0.9rem);
+}
+
+.detail-static dt {
+  font-weight: 700;
+  margin-top: 0.5em;
+}
+
+.detail-static dd {
+  margin: 0;
+  color: var(--screen-muted);
+}
+
+/* ----- Demos & Videos screen (mouse/tap only, no focus ring) ----- */
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(6px, 1.6vw, 14px);
+  margin: 0.8em 0 1.2em;
+}
+
+.demo-tile {
+  aspect-ratio: 16 / 10;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+
+.demo-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.demo-tile.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--screen-disabled);
+  font-size: clamp(0.6rem, 1.5vw, 0.8rem);
+  cursor: default;
+}
+
+.screen-empty {
+  color: var(--screen-muted);
+  font-size: clamp(0.7rem, 1.8vw, 0.95rem);
 }
 
 /* ===== Console buttons ===== */
