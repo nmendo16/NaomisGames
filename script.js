@@ -1,53 +1,23 @@
-const pageShell = document.getElementById('pageShell');
-const overlay = document.getElementById('overlay');
-const startBtn = document.getElementById('startBtn');
+const root = document.documentElement;
 
-const isMobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 900;
+// Console rotates 90° to the right automatically whenever the viewport
+// looks like a phone/tablet: either a coarse (touch) pointer, or a narrow
+// width. No device motion / gyroscope permission involved.
+const mobileQuery = window.matchMedia('(pointer: coarse), (max-width: 900px)');
 
-if (!isMobile) {
-  overlay.style.display = 'none';
+function applyTilt(isMobile) {
+  root.classList.toggle('tilt-right', isMobile);
 }
 
-function updateTilt(beta, gamma) {
-  const targetViewingAngle = 55;
-  let tiltX = (beta - targetViewingAngle) * 0.35;
-  let tiltY = gamma * 0.35;
+applyTilt(mobileQuery.matches);
 
-  tiltX = Math.max(-8, Math.min(8, tiltX));
-  tiltY = Math.max(-8, Math.min(8, tiltY));
-
-  pageShell.style.setProperty('--tilt-x', `${-tiltX}deg`);
-  pageShell.style.setProperty('--tilt-y', `${tiltY}deg`);
-  pageShell.style.transform = `rotateX(${-tiltX}deg) rotateY(${tiltY}deg)`;
+// Re-check on orientation/resolution changes (rotating a phone, resizing
+// a window across the breakpoint, etc).
+if (mobileQuery.addEventListener) {
+  mobileQuery.addEventListener('change', (e) => applyTilt(e.matches));
+} else {
+  // Safari < 14 fallback
+  mobileQuery.addListener((e) => applyTilt(e.matches));
 }
 
-function handleOrientation(event) {
-  if (event.beta === null || event.gamma === null) return;
-  updateTilt(event.beta, event.gamma);
-}
-
-function enableMotion() {
-  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then((permissionState) => {
-        if (permissionState === 'granted') {
-          window.addEventListener('deviceorientation', handleOrientation, true);
-          overlay.style.display = 'none';
-        } else {
-          overlay.querySelector('p').textContent = 'Motion permission was denied, so the page will stay static.';
-          startBtn.textContent = 'Continue';
-        }
-      })
-      .catch(() => {
-        overlay.querySelector('p').textContent = 'Motion was not available, so the page will stay static.';
-        startBtn.textContent = 'Continue';
-      });
-  } else {
-    window.addEventListener('deviceorientation', handleOrientation, true);
-    overlay.style.display = 'none';
-  }
-}
-
-if (startBtn) {
-  startBtn.addEventListener('click', enableMotion);
-}
+window.addEventListener('resize', () => applyTilt(mobileQuery.matches));

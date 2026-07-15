@@ -19,190 +19,148 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
-  height: 100%;
+  min-height: 100%;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   color: var(--text);
-  overflow: hidden;
   background: rgba(186, 187, 191, 0.5);
 }
 
 body {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
 }
+
+/* ===== Console shell ===== */
 
 .page-shell {
-  margin: 0 10%;
-  height: 100vh;
-  width: 80vw;
-  overflow: hidden;
-  background-image: url("images/bg.png");
-  background-size: contain;
-  background-position: top center;
-  background-repeat: no-repeat;
-  transform-style: preserve-3d;
-  transition: transform 0.15s ease-out;
-  will-change: transform;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 
-@media (max-width: 768px) {
-  .page-shell {
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-  }
+/* Full 90° "force landscape" rotation, applied automatically on
+   mobile/touch/narrow viewports. No sensors involved — purely
+   resolution/pointer based, toggled on <html> by script.js.
+
+   The trick: size the shell as if the viewport were already rotated
+   (width = viewport height, height = viewport width), center it with
+   fixed positioning, then rotate 90° about its own center. The rotated
+   box's visual footprint then matches the real (portrait) viewport
+   exactly, with no scrollbars or clipping. */
+html.tilt-right,
+html.tilt-right body {
+  height: 100%;
+  overflow: hidden;
 }
 
-.motion-overlay {
+html.tilt-right .page-shell {
   position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 100vh;
+  height: 100vw;
+  padding: 1.5rem 1rem;
+  transform: translate(-50%, -50%) rotate(90deg);
+  transform-origin: center center;
+}
+
+/* console-frame keeps the exact aspect ratio of no_buttons_bg.png (1333 x 639)
+   so every child positioned with percentages lines up with the artwork
+   at any screen size. Sized as a % of its parent (not vw) so it scales
+   correctly whether or not the shell is currently rotated. */
+.console-frame {
+  position: relative;
+  width: min(1200px, 94%);
+  aspect-ratio: 1333 / 639;
+  background-image: url("images/no buttons bg.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.screen {
+  position: absolute;
+  left: 18.08%;
+  top: 8.61%;
+  width: 63.32%;
+  height: 79.34%;
+  overflow: hidden;
+  border-radius: 2%;
+}
+
+.game-container {
+  position: absolute;
   inset: 0;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 0.8rem;
-  padding: 1.5rem;
-  text-align: center;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.75);
-  z-index: 30;
+  background: #000;
 }
 
-.motion-overlay h2 {
-  margin: 0;
-  font-family: "Canva Sans", "Segoe UI", sans-serif;
+.game-canvas {
+  width: 100%;
+  height: 100%;
 }
 
-.motion-overlay p {
-  margin: 0;
-  max-width: 360px;
-  line-height: 1.5;
-}
+/* ===== Console buttons ===== */
 
-.start-button {
+.console-btn {
+  position: absolute;
+  padding: 0;
   border: none;
-  border-radius: 999px;
-  padding: 0.8rem 1.2rem;
-  background: #f0a24b;
-  color: #fff;
-  font-weight: 700;
+  background: transparent;
   cursor: pointer;
 }
 
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 2rem;
-  background: transparent;
-  backdrop-filter: none;
-  box-shadow: none;
+.console-btn img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
 }
 
-@media (max-width: 768px) {
-  .topbar {
-    position: relative;
-    background: rgba(0, 0, 0, 0.5);
-  }
+.btn-sun {
+  left: 2.91%;
+  top: 34.01%;
+  width: 14.06%;
+  height: 29.33%;
 }
 
-.brand {
-  font-family: "Canva Sans", "Segoe UI", sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.14rem;
-  text-decoration: none;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+.btn-up {
+  left: 82.52%;
+  top: 18.08%;
+  width: 13.5%;
+  height: 28.17%;
 }
 
-.content {
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: 2rem 1.4rem 3rem;
+.btn-down {
+  left: 82.65%;
+  top: 42.59%;
+  width: 13.18%;
+  height: 27.5%;
 }
 
-@media (max-width: 768px) {
-  .content {
-    padding: 1rem 1rem 2rem;
-    background: rgba(255, 255, 255, 0.95);
-  }
+.console-btn:active img {
+  transform: scale(0.94);
 }
+
+/* ===== Footer ===== */
 
 .footer {
   text-align: center;
-  padding: 1rem 1rem 2rem;
+  padding: 0.5rem 1rem 1rem;
   color: var(--muted);
 }
 
 @media (max-width: 768px) {
   .footer {
-    background: rgba(255, 255, 255, 0.95);
     color: var(--text);
-  }
-}
-
-.footer {
-  text-align: center;
-  padding: 1rem 1rem 2rem;
-  color: var(--muted);
-}
-
-@media (max-width: 768px) {
-  .footer {
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--text);
-  }
-}
-
-@media (max-width: 768px) {
-  .page-shell {
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-  }
-
-  .motion-overlay {
-    display: flex;
-  }
-
-  .topbar {
-    position: relative;
-    background: rgba(0, 0, 0, 0.5);
-  }
-
-  .content {
-    padding: 1rem 1rem 2rem;
-    background: rgba(255, 255, 255, 0.95);
-  }
-}
-
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero {
-    min-height: 64vh;
-  }
-}
-
-@media (max-width: 640px) {
-  .topbar {
-    flex-direction: column;
-    gap: 0.7rem;
-    padding: 0.9rem 1rem;
-  }
-
-  .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .hero-content {
-    padding: 1.5rem;
   }
 }

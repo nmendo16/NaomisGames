@@ -8,13 +8,25 @@
 </head>
 <body>
   <div id="pageShell" class="page-shell">
-    <div id="overlay" class="motion-overlay">
-      <h2>Ready for a mobile tilt?</h2>
-      <p>Please make sure to set your Portrait Orientation Lock to OFF.</p>
-      <button id="startBtn" class="start-button">OK</button>
-    </div>
+    <div class="console-frame">
+      <div id="screen" class="screen">
+        <div id="gameContainer" class="game-container">
+          <div id="gameCanvas" class="game-canvas"></div>
+        </div>
+      </div>
 
-    <main class="content"></main>
+      <button id="btnSun" class="console-btn btn-sun" aria-label="Menu">
+        <img src="images/button sun.png" alt="" draggable="false" />
+      </button>
+
+      <button id="btnUp" class="console-btn btn-up" aria-label="Up">
+        <img src="images/buttonup.png" alt="" draggable="false" />
+      </button>
+
+      <button id="btnDown" class="console-btn btn-down" aria-label="Down">
+        <img src="images/buttondown.png" alt="" draggable="false" />
+      </button>
+    </div>
 
     <footer id="contact" class="footer">
       <p>© 2026 Portfolio Games · Built for GitHub Pages</p>
