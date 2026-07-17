@@ -46,7 +46,7 @@ window.addEventListener('resize', () => applyTilt(mobileQuery.matches));
    uploaded yet just shows fewer options instead of broken links.
    ========================================================================= */
 
-const EXIT_REDIRECT_URL = 'https://naomilopez19.wixsite.com/naomisportfolio';
+const EXIT_REDIRECT_URL = 'https://naomibuilds.my.canva.site/';
 
 const screenContent = document.getElementById('screenContent');
 const exitBtn = document.getElementById('exitBtn');
