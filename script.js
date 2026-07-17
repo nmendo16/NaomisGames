@@ -1,4 +1,10 @@
+import { GAMES } from './games-data.js';
+import { createCarousel } from './carousel.js';
+import { probeNumberedImages, probeNumberedVideos, fileExists } from './asset-utils.js';
+
 const root = document.documentElement;
+
+console.log('script.js loaded');
 
 // Console rotates 90° to the right automatically whenever the viewport
 // looks like a phone/tablet: either a coarse (touch) pointer, or a narrow
@@ -33,65 +39,14 @@ window.addEventListener('resize', () => applyTilt(mobileQuery.matches));
      - Mouse & touch can activate ANY item directly, regardless of focus.
      - Demos & Videos grid is mouse/tap only — no keyboard focus there,
        since a 2x2 grid has no natural single-axis up/down order.
+
+   Game content (titles, descriptions, links) lives in games-data.js.
+   Optional per-game assets (preview images, docs, demo clips) are
+   auto-detected at runtime — see asset-utils.js — so a game with nothing
+   uploaded yet just shows fewer options instead of broken links.
    ========================================================================= */
 
-// TODO: set this to wherever "exiting" the app should send visitors
-// (e.g. your main portfolio site). Left as a placeholder until confirmed.
 const EXIT_REDIRECT_URL = 'https://naomilopez19.wixsite.com/naomisportfolio';
-
-/* ---------- Placeholder game data ----------
-   Replace/extend this array with your real content table. Schema:
-   {
-     id: unique slug,
-     title: string,
-     shortDesc: string,
-     role: string | null           -> shown as static text if present
-     technologies: string | null   -> shown as static text if present
-     playUrl: string | null        -> opens in new tab; item hidden if null
-     docs: { wordUrl, pptUrl, zipUrl } (any may be null) -> hidden if ALL null
-     videos: [url, url, url, url]  -> up to 4; empty tiles shown for the rest
-   }
-*/
-const GAMES = [
-  {
-    id: 'game-1',
-    title: 'A.D.A.M.',
-    shortDesc: 'Advanced Drone Asteroid Miner',
-    role: 'AI Feature Developer. Designed a Split Architecture between logic and complex personality-based assistance for the pilot.',
-    technologies: 'Unity, C#, Aseprite',
-    playUrl: 'https://adam-client.onrender.com',
-    docs: {
-      wordUrl: 'files/game-1/critical_alert.jpg',
-      pptUrl: 'files/game-1/A.D.A.M - Advanced Drone Asteroid Miner.pptx',
-      zipUrl: 'files/game-1/game-1-source.zip',
-    },
-    videos: null,
-  },
-  {
-    id: 'game-2',
-    title: 'Game Title 2',
-    shortDesc: 'Another placeholder description — swap in real copy any time.',
-    role: 'Programmer on a 3-person team.',
-    technologies: 'Godot, GDScript',
-    playUrl: null, // no Play link for this one yet
-    docs: {
-      wordUrl: 'files/game-2/design-doc.docx',
-      pptUrl: null,
-      zipUrl: null,
-    },
-    videos: [],
-  },
-  {
-    id: 'game-3',
-    title: 'Game Title 3',
-    shortDesc: 'Coming soon.',
-    role: null,
-    technologies: null,
-    playUrl: null,
-    docs: { wordUrl: null, pptUrl: null, zipUrl: null },
-    videos: [],
-  },
-];
 
 const screenContent = document.getElementById('screenContent');
 const exitBtn = document.getElementById('exitBtn');
@@ -105,6 +60,11 @@ let stack = [{ name: 'menu' }];
 // Focus state for the *current* screen only.
 let focusIndex = 0;
 let focusableEls = []; // <div>/<button> elements, in order, for the active screen
+let focusChangeHandler = null;
+
+// Guards against a slow async screen finishing after the user has already
+// navigated away (e.g. tapping Go Back before doc checks resolve).
+let renderToken = 0;
 
 function currentScreen() {
   return stack[stack.length - 1];
@@ -135,6 +95,9 @@ function setFocus(index) {
   focusIndex = Math.max(0, Math.min(index, focusableEls.length - 1));
   focusableEls.forEach((el, i) => el.classList.toggle('focused', i === focusIndex));
   focusableEls[focusIndex].scrollIntoView({ block: 'nearest' });
+  if (typeof focusChangeHandler === 'function') {
+    focusChangeHandler(focusIndex);
+  }
 }
 
 function moveFocus(delta) {
@@ -150,15 +113,22 @@ function activateFocused() {
 /* ---------- rendering ---------- */
 
 function render() {
+  const token = ++renderToken;
+  // Clear any active hold intervals when rendering a new screen
+  if (holdIntervals && typeof holdIntervals.forEach === 'function') {
+    holdIntervals.forEach((iv) => clearInterval(iv));
+    holdIntervals.clear();
+  }
   const screen = currentScreen();
   screenContent.innerHTML = '';
   focusableEls = [];
   focusIndex = 0;
+  focusChangeHandler = null;
 
   if (screen.name === 'menu') renderMenu();
-  else if (screen.name === 'detail') renderDetail(screen.gameId);
-  else if (screen.name === 'docs') renderDocs(screen.gameId);
-  else if (screen.name === 'demos') renderDemos(screen.gameId);
+  else if (screen.name === 'detail') renderDetail(screen.gameId, token);
+  else if (screen.name === 'docs') renderDocs(screen.gameId, token);
+  else if (screen.name === 'demos') renderDemos(screen.gameId, token);
 
   if (focusableEls.length) setFocus(0);
 }
@@ -180,7 +150,23 @@ function makeRow({ label, disabled = false, isLink = false, onActivate }) {
   return row;
 }
 
+// Small toast helper for transient messages (download started, etc.)
+function showToast(message, duration = 3000) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = message;
+  document.body.appendChild(t);
+  // show
+  requestAnimationFrame(() => t.classList.add('show'));
+  // remove after duration
+  setTimeout(() => {
+    t.classList.remove('show');
+    t.addEventListener('transitionend', () => t.remove(), { once: true });
+  }, duration);
+}
+
 function renderMenu() {
+  console.log('renderMenu called');
   const eyebrow = document.createElement('p');
   eyebrow.className = 'screen-eyebrow';
   eyebrow.textContent = 'Game Menu';
@@ -190,30 +176,76 @@ function renderMenu() {
   heading.textContent = 'Select a Game';
   screenContent.appendChild(heading);
 
+  const layout = document.createElement('div');
+  layout.className = 'menu-layout';
+
   const list = document.createElement('div');
   list.className = 'screen-list menu-list';
+  // Create a focusable preview area. It is added to focusableEls so it
+  // can receive focus with Up/Down, but it intentionally has no
+  // activation handler so pressing Sun/Enter or clicking does nothing.
+  const previewPane = document.createElement('button');
+  previewPane.type = 'button';
+  previewPane.className = 'menu-preview';
+  previewPane.setAttribute('aria-hidden', 'true');
+  previewPane.textContent = 'Select a game to preview';
 
   GAMES.forEach((game) => {
     const row = makeRow({
       label: game.title,
       onActivate: () => go({ name: 'detail', gameId: game.id }),
     });
+    // Tag the row with its game index so the focus handler can identify it
+    row.dataset.gameIndex = GAMES.indexOf(game);
     list.appendChild(row);
   });
 
-  screenContent.appendChild(list);
+  // Keep track of the last game index shown in the preview so the
+  // preview remains stable when the preview pane itself is focused.
+  let lastPreviewGameIndex = 0;
+  focusChangeHandler = (index) => {
+    const el = focusableEls[index];
+    if (!el) return;
+    const gidx = el.dataset && el.dataset.gameIndex;
+    let gameToShow = null;
+    if (typeof gidx !== 'undefined') {
+      gameToShow = GAMES[Number(gidx)];
+      lastPreviewGameIndex = Number(gidx);
+    } else {
+      gameToShow = GAMES[lastPreviewGameIndex];
+    }
+    if (!gameToShow) return;
+    const previewUrls = Array.isArray(gameToShow.previewImages) && gameToShow.previewImages.length
+      ? gameToShow.previewImages
+      : [];
+    createCarousel(previewPane, previewUrls);
+  };
+
+  layout.appendChild(list);
+  layout.appendChild(previewPane);
+
+  // Make the preview pane focusable via controller/keyboard: add it to
+  // focusableEls and wire mouseenter to update focus. It intentionally
+  // has no click handler so activating it does nothing.
+  focusableEls.push(previewPane);
+  previewPane.addEventListener('mouseenter', () => {
+    const i = focusableEls.indexOf(previewPane);
+    if (i !== -1) setFocus(i);
+  });
+  screenContent.appendChild(layout);
 }
 
-function renderDetail(gameId) {
+function renderDetail(gameId, token) {
   const game = findGame(gameId);
   if (!game) return renderMenu();
 
   const layout = document.createElement('div');
   layout.className = 'detail-layout';
 
+  // Carousel placeholder — populated once preview images are probed.
   const thumb = document.createElement('div');
   thumb.className = 'detail-thumb';
-  thumb.textContent = 'Preview image';
+  thumb.textContent = 'Loading previews…';
   layout.appendChild(thumb);
 
   const info = document.createElement('div');
@@ -256,31 +288,41 @@ function renderDetail(gameId) {
     );
   }
 
-  const hasDocs = game.docs && (game.docs.wordUrl || game.docs.pptUrl || game.docs.zipUrl);
-  if (hasDocs) {
-    actions.appendChild(
-      makeRow({
-        label: 'Documentations',
-        onActivate: () => go({ name: 'docs', gameId: game.id }),
-      })
-    );
-  }
+  actions.appendChild(
+    makeRow({
+      label: 'Documentations',
+      onActivate: () => go({ name: 'docs', gameId: game.id }),
+    })
+  );
 
-  if (game.videos && game.videos.length) {
-    actions.appendChild(
-      makeRow({
-        label: 'Demos and Videos',
-        onActivate: () => go({ name: 'demos', gameId: game.id }),
-      })
-    );
-  }
+  actions.appendChild(
+    makeRow({
+      label: 'Demos and Videos',
+      onActivate: () => go({ name: 'demos', gameId: game.id }),
+    })
+  );
 
   actions.appendChild(makeRow({ label: 'Go Back', onActivate: goBack }));
 
   screenContent.appendChild(actions);
+
+  const previewUrls = Array.isArray(game.previewImages) && game.previewImages.length
+    ? game.previewImages
+    : null;
+
+  if (previewUrls) {
+    createCarousel(thumb, previewUrls);
+  } else {
+    // Fire and forget — carousel fills in once images are found. If the
+    // user has since navigated away, `token` no longer matches and we bail.
+    probeNumberedImages(game.assetsDir).then((urls) => {
+      if (token !== renderToken) return;
+      createCarousel(thumb, urls);
+    });
+  }
 }
 
-function renderDocs(gameId) {
+async function renderDocs(gameId, token) {
   const game = findGame(gameId);
   if (!game) return renderMenu();
 
@@ -293,20 +335,55 @@ function renderDocs(gameId) {
   heading.textContent = 'Documentations';
   screenContent.appendChild(heading);
 
+  const loading = document.createElement('p');
+  loading.className = 'screen-empty';
+  loading.textContent = 'Checking for documentation and images…';
+  screenContent.appendChild(loading);
+
+  const docs = game.docFiles || {};
+  const candidates = [
+    ['Game Design Word file', docs.wordUrl],
+    ['PowerPoint Presentation', docs.pptUrl],
+    ['Download Zip folder', docs.zipUrl],
+  ].filter(([, url]) => url);
+
+  const checks = await Promise.all(candidates.map(([, url]) => fileExists(url)));
+  if (token !== renderToken) return;
+  const docEntries = candidates.filter((_, i) => checks[i]);
+
+  // Probe numbered preview images in the game's assets dir for both png and jpg
+  const pngs = await probeNumberedImages(game.assetsDir, { ext: 'png', max: 4 });
+  const jpgs = await probeNumberedImages(game.assetsDir, { ext: 'jpg', max: 4 });
+  if (token !== renderToken) return;
+
+  const allImgs = Array.from(new Set([...pngs, ...jpgs])).slice(0, 4);
+
+  loading.remove();
+
+  const cols = document.createElement('div');
+  cols.className = 'docs-layout';
+
+  const col1 = document.createElement('div');
+  col1.className = 'docs-col docs-col-1';
+
   const list = document.createElement('div');
   list.className = 'screen-list';
 
-  const docEntries = [
-    ['Game Design Word file', game.docs && game.docs.wordUrl],
-    ['PowerPoint Presentation', game.docs && game.docs.pptUrl],
-    ['Download Zip folder', game.docs && game.docs.zipUrl],
-  ].filter(([, url]) => url);
+  if (game.repoUrl) {
+    list.appendChild(
+      makeRow({
+        label: 'Repository',
+        isLink: true,
+        onActivate: () => window.open(game.repoUrl, '_blank', 'noopener'),
+      })
+    );
+  }
 
-  if (!docEntries.length) {
+  if (!docEntries.length && !game.repoUrl) {
     const empty = document.createElement('p');
     empty.className = 'screen-empty';
     empty.textContent = 'No documentation uploaded yet.';
-    screenContent.appendChild(empty);
+    col1.appendChild(empty);
   } else {
     docEntries.forEach(([label, url]) => {
       list.appendChild(
@@ -314,10 +391,13 @@ function renderDocs(gameId) {
           label,
           isLink: true,
           onActivate: () => {
+            showToast(`Downloading: ${label}`);
             const a = document.createElement('a');
             a.href = url;
             a.download = '';
+            document.body.appendChild(a);
             a.click();
+            a.remove();
           },
         })
       );
@@ -325,10 +405,43 @@ function renderDocs(gameId) {
   }
 
   list.appendChild(makeRow({ label: 'Go Back', onActivate: goBack }));
-  screenContent.appendChild(list);
+  col1.appendChild(list);
+
+  const col2 = document.createElement('div');
+  col2.className = 'docs-col docs-col-2';
+  const col3 = document.createElement('div');
+  col3.className = 'docs-col docs-col-3';
+
+  for (let i = 0; i < 4; i++) {
+    const src = allImgs[i] || null;
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'docs-img-wrap';
+    if (src) {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = `${game.title} preview ${i + 1}`;
+      img.draggable = false;
+      img.className = 'docs-img';
+      imgWrap.appendChild(img);
+    } else {
+      imgWrap.className += ' docs-img-empty';
+      imgWrap.textContent = '—';
+    }
+
+    if (i <= 1) col2.appendChild(imgWrap);
+    else col3.appendChild(imgWrap);
+  }
+
+  cols.appendChild(col1);
+  cols.appendChild(col2);
+  cols.appendChild(col3);
+
+  screenContent.appendChild(cols);
+
+  setFocus(0);
 }
 
-function renderDemos(gameId) {
+async function renderDemos(gameId, token) {
   const game = findGame(gameId);
   if (!game) return renderMenu();
 
@@ -341,11 +454,38 @@ function renderDemos(gameId) {
   heading.textContent = 'Demos and Videos';
   screenContent.appendChild(heading);
 
+  const loading = document.createElement('p');
+  loading.className = 'screen-empty';
+  loading.textContent = 'Checking for demo clips…';
+  screenContent.appendChild(loading);
+
+  // Probe numbered demo clips in the game's videos dir (1.mp4, 2.mp4 ...)
+  const videoUrls = await probeNumberedVideos(game.videosDir, { max: 4 });
+  if (token !== renderToken) return;
+
+  loading.remove();
+
+  // Wrapper for the grid
+  const wrapper = document.createElement('div');
+  wrapper.className = 'demo-wrapper';
+
+  // Add a focusable Go Back row under the heading (above the grid)
+  const backRow = makeRow({ label: 'Go Back', onActivate: goBack });
+  screenContent.appendChild(backRow);
+
+  if (!videoUrls.some(Boolean)) {
+    const empty = document.createElement('p');
+    empty.className = 'screen-empty';
+    empty.textContent = 'No demo clips uploaded yet.';
+    wrapper.appendChild(empty);
+    screenContent.appendChild(wrapper);
+    return;
+  }
+
   const grid = document.createElement('div');
   grid.className = 'demo-grid';
 
-  for (let i = 0; i < 4; i++) {
-    const src = game.videos && game.videos[i];
+  videoUrls.forEach((src, i) => {
     const tile = document.createElement('button');
     tile.type = 'button';
     tile.className = 'demo-tile' + (src ? '' : ' empty');
@@ -360,35 +500,70 @@ function renderDemos(gameId) {
       tile.disabled = true;
     }
     grid.appendChild(tile);
-  }
-  screenContent.appendChild(grid);
+  });
 
-  // Demos screen is mouse/tap only — Go Back is still a normal clickable
-  // row, but it is NOT added to focusableEls, so Up/Down do nothing here.
-  const backRow = document.createElement('button');
-  backRow.type = 'button';
-  backRow.className = 'screen-row';
-  backRow.innerHTML = '<span class="cursor"></span><span>Go Back</span>';
-  backRow.addEventListener('click', goBack);
-  screenContent.appendChild(backRow);
+  wrapper.appendChild(grid);
+  screenContent.appendChild(wrapper);
+  // Ensure Go Back is the initial focused element on the Demos screen.
+  // Use a microtask to avoid timing races with render().
+  const backIndex = () => focusableEls.indexOf(backRow);
+  setTimeout(() => {
+    const i = backIndex();
+    if (i !== -1) setFocus(i);
+    else if (focusableEls.length) setFocus(0);
+  }, 0);
 }
 
 /* ---------- input wiring ---------- */
 
 exitBtn.addEventListener('click', exitApp);
 btnSun.addEventListener('click', activateFocused);
-btnUp.addEventListener('click', () => moveFocus(-1));
-btnDown.addEventListener('click', () => moveFocus(1));
+// Continuous scroll helpers (used by console buttons and keyboard)
+const holdIntervals = new Map();
+function scrollByOnce(delta) {
+  screenContent.scrollBy({ top: delta, behavior: 'smooth' });
+}
+function startContinuous(id, delta) {
+  if (currentScreen().name === 'demos') {
+    // immediate first scroll
+    scrollByOnce(delta);
+    if (holdIntervals.has(id)) return;
+    const iv = setInterval(() => scrollByOnce(delta), 120);
+    holdIntervals.set(id, iv);
+  } else {
+    // behave like focus move on other screens
+    moveFocus(delta > 0 ? 1 : -1);
+  }
+}
+function stopContinuous(id) {
+  const iv = holdIntervals.get(id);
+  if (iv) clearInterval(iv);
+  holdIntervals.delete(id);
+}
+
+// Console buttons: start on pointerdown, stop on pointerup/cancel/leave
+btnUp.addEventListener('pointerdown', () => startContinuous('btnUp', -200));
+btnUp.addEventListener('pointerup', () => stopContinuous('btnUp'));
+btnUp.addEventListener('pointercancel', () => stopContinuous('btnUp'));
+btnUp.addEventListener('pointerleave', () => stopContinuous('btnUp'));
+
+btnDown.addEventListener('pointerdown', () => startContinuous('btnDown', 200));
+btnDown.addEventListener('pointerup', () => stopContinuous('btnDown'));
+btnDown.addEventListener('pointercancel', () => stopContinuous('btnDown'));
+btnDown.addEventListener('pointerleave', () => stopContinuous('btnDown'));
+
+// Also allow quick click (mouse click) as a single step
+// click fallback removed to avoid double-activating; pointer events handle both tap and press
 
 window.addEventListener('keydown', (e) => {
   switch (e.key) {
     case 'ArrowUp':
       e.preventDefault();
-      moveFocus(-1);
+      if (!e.repeat) startContinuous('keyUp', -200);
       break;
     case 'ArrowDown':
       e.preventDefault();
-      moveFocus(1);
+      if (!e.repeat) startContinuous('keyDown', 200);
       break;
     case 'Enter':
       e.preventDefault();
@@ -400,6 +575,16 @@ window.addEventListener('keydown', (e) => {
       break;
     default:
       break;
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    stopContinuous('keyUp');
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    stopContinuous('keyDown');
   }
 });
 
