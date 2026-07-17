@@ -13,14 +13,17 @@ export function imageExists(url) {
     const img = new Image();
     img.onload = () => resolve(true);
     img.onerror = () => resolve(false);
-    img.src = url;
+    img.src = encodeURI(url);
   });
 }
 
 // Does any file exist at this URL? Uses a lightweight HEAD request.
+// encodeURI handles filenames with spaces or other special characters —
+// without it, fetch() can fail before the request even reaches the
+// network, which looks identical to a real 404 from the caller's side.
 export async function fileExists(url) {
   try {
-    const res = await fetch(url, { method: 'HEAD' });
+    const res = await fetch(encodeURI(url), { method: 'HEAD' });
     return res.ok;
   } catch {
     return false;

@@ -391,10 +391,10 @@ async function renderDocs(gameId, token) {
           label,
           isLink: true,
           onActivate: () => {
-            showToast(`Downloading: ${label}`);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = '';
+  showToast(`Downloading: ${label}`);
+  const a = document.createElement('a');
+  a.href = encodeURI(url);
+  a.download = '';
             document.body.appendChild(a);
             a.click();
             a.remove();
