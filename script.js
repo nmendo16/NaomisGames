@@ -1,10 +1,13 @@
 import { GAMES } from './games-data.js';
 import { createCarousel } from './carousel.js';
-import { probeNumberedImages, probeNumberedVideos, fileExists } from './asset-utils.js';
+import { probeNumberedImages, probeNumberedVideos, fileExists, resolveExistingFiles } from './asset-utils.js';
 
 const root = document.documentElement;
 
 console.log('script.js loaded');
+
+// Flag to track if tilt splash has been shown this session
+let tiltSplashShown = false;
 
 // Console rotates 90° to the right automatically whenever the viewport
 // looks like a phone/tablet: either a coarse (touch) pointer, or a narrow
@@ -12,7 +15,16 @@ console.log('script.js loaded');
 const mobileQuery = window.matchMedia('(pointer: coarse), (max-width: 900px)');
 
 function applyTilt(isMobile) {
+  const wasNotTilted = !root.classList.contains('tilt-right');
+  const shouldTilt = isMobile;
+  
   root.classList.toggle('tilt-right', isMobile);
+  
+  // Show splash screen if tilting for the first time this session
+  if (shouldTilt && wasNotTilted && !tiltSplashShown) {
+    showTiltSplash();
+    tiltSplashShown = true;
+  }
 }
 
 applyTilt(mobileQuery.matches);
@@ -27,6 +39,35 @@ if (mobileQuery.addEventListener) {
 }
 
 window.addEventListener('resize', () => applyTilt(mobileQuery.matches));
+
+// Tilt splash screen functions
+function showTiltSplash() {
+  const splash = document.getElementById('tiltSplash');
+  if (splash) {
+    splash.classList.add('show');
+  }
+}
+
+function hideTiltSplash() {
+  const splash = document.getElementById('tiltSplash');
+  if (splash) {
+    splash.classList.remove('show');
+  }
+}
+
+// Set up tilt splash OK button listener
+document.addEventListener('DOMContentLoaded', () => {
+  const tiltSplashOkBtn = document.getElementById('tiltSplashOkBtn');
+  if (tiltSplashOkBtn) {
+    tiltSplashOkBtn.addEventListener('click', hideTiltSplash);
+  }
+});
+
+// Also handle if the button exists before DOMContentLoaded
+const tiltSplashOkBtn = document.getElementById('tiltSplashOkBtn');
+if (tiltSplashOkBtn) {
+  tiltSplashOkBtn.addEventListener('click', hideTiltSplash);
+}
 
 /* =========================================================================
    CONSOLE APP — screen navigation
@@ -108,6 +149,11 @@ function moveFocus(delta) {
 function activateFocused() {
   if (!focusableEls.length) return;
   focusableEls[focusIndex].click();
+}
+
+// Format filenames for UI display: convert underscores and dashes to spaces
+function formatFilenameForDisplay(filename) {
+  return filename.replace(/[-_]/g, ' ');
 }
 
 /* ---------- rendering ---------- */
@@ -340,23 +386,17 @@ async function renderDocs(gameId, token) {
   loading.textContent = 'Checking for documentation and images…';
   screenContent.appendChild(loading);
 
-  const docs = game.docFiles || {};
-  const candidates = [
-    ['Game Design Word file', docs.wordUrl],
-    ['PowerPoint Presentation', docs.pptUrl],
-    ['Download Zip folder', docs.zipUrl],
-  ].filter(([, url]) => url);
-
-  const checks = await Promise.all(candidates.map(([, url]) => fileExists(url)));
+  // Resolve explicit docFiles from games-data.js
+  const docFiles = await resolveExistingFiles(game.assetsDir, game.docFiles || []);
   if (token !== renderToken) return;
-  const docEntries = candidates.filter((_, i) => checks[i]);
+  // Map to [filename, url] pairs for download links
+  const docEntries = docFiles.map((file) => [file.name, file.url]);
 
-  // Probe numbered preview images in the game's assets dir for both png and jpg
-  const pngs = await probeNumberedImages(game.assetsDir, { ext: 'png', max: 4 });
-  const jpgs = await probeNumberedImages(game.assetsDir, { ext: 'jpg', max: 4 });
+  // Resolve explicit devImages from games-data.js instead of probing for numbered files
+  const devImageFiles = await resolveExistingFiles(game.assetsDir, game.devImages || []);
   if (token !== renderToken) return;
 
-  const allImgs = Array.from(new Set([...pngs, ...jpgs])).slice(0, 4);
+  const allImgs = devImageFiles.map((file) => file.url).slice(0, 4);
 
   loading.remove();
 
@@ -386,12 +426,13 @@ async function renderDocs(gameId, token) {
     col1.appendChild(empty);
   } else {
     docEntries.forEach(([label, url]) => {
+      const displayLabel = formatFilenameForDisplay(label);
       list.appendChild(
         makeRow({
-          label,
+          label: displayLabel,
           isLink: true,
           onActivate: () => {
-  showToast(`Downloading: ${label}`);
+  showToast(`Downloading: ${displayLabel}`);
   const a = document.createElement('a');
   a.href = encodeURI(url);
   a.download = '';
@@ -459,9 +500,14 @@ async function renderDemos(gameId, token) {
   loading.textContent = 'Checking for demo clips…';
   screenContent.appendChild(loading);
 
-  // Probe numbered demo clips in the game's videos dir (1.mp4, 2.mp4 ...)
-  const videoUrls = await probeNumberedVideos(game.videosDir, { max: 4 });
+  // Resolve explicit videoFiles from games-data.js instead of probing for numbered files
+  const videoFiles = await resolveExistingFiles(game.videosDir, game.videoFiles || []);
   if (token !== renderToken) return;
+  // Pad array to 4 slots for grid layout
+  const videoUrls = Array(4).fill(null);
+  videoFiles.slice(0, 4).forEach((file, i) => {
+    videoUrls[i] = file.url;
+  });
 
   loading.remove();
 
@@ -490,11 +536,23 @@ async function renderDemos(gameId, token) {
     tile.type = 'button';
     tile.className = 'demo-tile' + (src ? '' : ' empty');
     if (src) {
-      const video = document.createElement('video');
-      video.src = src;
-      video.controls = true;
-      video.preload = 'metadata';
-      tile.appendChild(video);
+      // Handle .gif files as images instead of video elements
+      if (src.toLowerCase().endsWith('.gif')) {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = `Demo clip ${i + 1}`;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.draggable = false;
+        tile.appendChild(img);
+      } else {
+        const video = document.createElement('video');
+        video.src = src;
+        video.controls = true;
+        video.preload = 'metadata';
+        tile.appendChild(video);
+      }
     } else {
       tile.textContent = '—';
       tile.disabled = true;

@@ -127,7 +127,7 @@ export const GAMES = [
     videosDir: 'videos/game-6',
     docFiles: [],
     devImages: ['menu.png', 'win.png'],
-    videoFiles: ['endScene.mp4', 'start.mp4', 'startButt.mp4'],
+    videoFiles: ['endScene.mp4', 'start.mp4', 'startButt.mp4', 'endScene-ezgif.com-video-to-gif-converter.gif'],
   },
   {
     id: 'game-7',
