@@ -55,7 +55,7 @@ body::before {
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
-  opacity: 0.9;
+  opacity: 0.98;
   z-index: -1;
   pointer-events: none;
 }
@@ -568,6 +568,14 @@ html.tilt-right .page-shell {
   text-align: center;
   padding: 0.5rem 1rem 1rem;
   color: var(--muted);
+}
+
+.footer a {
+  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-decoration: none;
 }
 
 @media (max-width: 768px) {
